@@ -25,58 +25,55 @@ parser.add_argument("-i", "--insert", choices=[appStatus.noApp.name, appStatus.a
                     help="changes the status of your application to the given status")
 args = parser.parse_args()
 
-givenCompany = []
+companyDict = {}
 
-companies = []
+# Class to represent a company
+class Company:
+    def __init__(self, ticker, name, sector):
+        self.ticker = ticker;
+        self.name = name;
+        self.sector = sector;
+        self.appStatus = appStatus.noApp;
 
 # Reads a CSV file and creates a list of the companies in the S&P 500 and their tickers
 with open("ReferenceData/constituents_csv.csv") as file:
     csvreader = csv.reader(file)
     for row in csvreader:
-        companies.append(row)
-
-testV = args.company[0]
-testV2 =
-
-# adds the status noApp to the list of companies and finds the given
-# company in the list of S&P 500 companies
-for company in companies:
-    if (args.company[0] == company[0] or args.company[0] == company[1]):
-        givenCompany = company
-    company.append(appStatus.noApp)
+        newCompany = Company(row[0], row[1], row[2])
+        companyDict[newCompany.ticker] = newCompany
+        print("Company added to companyDict: " + row[0])
 
 # checks if the given company was found
-if (givenCompany == []):
+if (args.company[0] == "" or companyDict.get(args.company[0]) == None):
     msg = "Company not found in list of S&P 500 companies"
     print(msg)
-    sys.exit(0)
+    #sys.exit(0)
+
+givenCompany = companyDict.get(args.company[0])
 
 # gets the status of my application to a company
 def getStatus():
-    return appStatus(givenCompany[3]).value
+    return givenCompany.appStatus.value
 
 # if requested, runs and prints output of getStatus()
 if (args.status == True):
     print(getStatus())
 
-
 # changes the status of my application to a given status
 def changeStatus():
-    if (givenCompany[3] != appStatus[args.insert]):
-        givenCompany[3] = appStatus[args.insert]
-        print(getStatus())
-    else:
-        print("status is already: ")
+    if (args.insert != []):
+        if (givenCompany.appStatus != appStatus[args.insert]):
+            givenCompany.appStatus = appStatus[args.insert]
+            print(getStatus())
+        else:
+            print("status is already: ")
 
 if (args.insert != []):
     changeStatus()
 
 with open("ReferenceData/constituents_csv.csv", "w") as file:
     csvwriter = csv.writer(file)
-
-    csvwriter.writerow(companies[0])
-    for company in companies:
-        if (company[0] == "Symbol"):
-            print("symbol row")
-        else:
-            csvwriter.writerows(company)
+    # write the first row
+    csvwriter.writerow(companyDict["Symbol"])
+    # write the rest of the rows
+    csvwriter.writerows(zip(*companyDict.values()))
