@@ -2,6 +2,7 @@
 import argparse
 import csv
 import enum
+import sys
 
 # Enum to represent the status of an application
 class appStatus(enum.Enum):
@@ -20,11 +21,11 @@ parser.add_argument("-s", "--status", action="store_true",
                     help="get the status of your application to the given company")
 parser.add_argument("-i", "--insert", choices=[appStatus.noApp.name, appStatus.app.name,
                                                 appStatus.rej.name, appStatus.more.name,
-                                                appStatus.intV.name],
+                                                appStatus.intV.name], action="store",
                     help="changes the status of your application to the given status")
 args = parser.parse_args()
 
-given_company = args.company[0]
+givenCompany = []
 
 companies = []
 
@@ -34,30 +35,48 @@ with open("ReferenceData/constituents_csv.csv") as file:
     for row in csvreader:
         companies.append(row)
 
-# adds the status noApp to the list of companies
-for list in companies:
-    list.append(appStatus.noApp)
+testV = args.company[0]
+testV2 =
 
-# finds the given company in the list of S&P 500 companies
-def findCompany():
-    for list in companies:
-        if (given_company == list[0] or given_company == list[1]):
-            return list
-        else:
-            msg = "Company not found in list of S&P 500 companies"
-            return msg
+# adds the status noApp to the list of companies and finds the given
+# company in the list of S&P 500 companies
+for company in companies:
+    if (args.company[0] == company[0] or args.company[0] == company[1]):
+        givenCompany = company
+    company.append(appStatus.noApp)
 
-target_Company = findCompany()
+# checks if the given company was found
+if (givenCompany == []):
+    msg = "Company not found in list of S&P 500 companies"
+    print(msg)
+    sys.exit(0)
 
 # gets the status of my application to a company
 def getStatus():
-    return appStatus(target_Company[3]).value
+    return appStatus(givenCompany[3]).value
 
 # if requested, runs and prints output of getStatus()
 if (args.status == True):
     print(getStatus())
 
+
 # changes the status of my application to a given status
 def changeStatus():
-    target_Company[3] = appStatus(args.insert)
-    print(getStatus())
+    if (givenCompany[3] != appStatus[args.insert]):
+        givenCompany[3] = appStatus[args.insert]
+        print(getStatus())
+    else:
+        print("status is already: ")
+
+if (args.insert != []):
+    changeStatus()
+
+with open("ReferenceData/constituents_csv.csv", "w") as file:
+    csvwriter = csv.writer(file)
+
+    csvwriter.writerow(companies[0])
+    for company in companies:
+        if (company[0] == "Symbol"):
+            print("symbol row")
+        else:
+            csvwriter.writerows(company)
