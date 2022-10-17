@@ -2,9 +2,9 @@
 import argparse
 import datetime
 
-from CustomClasses import appStatus
-from CustomClasses import Application
-from CustomClasses import Company
+from CustomClasses import SectorType
+from CompanyListConverter import parseSector
+from CustomClasses import Application, AppMedium, Company
 import pickle
 import sys
 
@@ -14,8 +14,8 @@ parser.add_argument("-c", "--company", default="", action="store", type=str, req
                     help="the ticker of the company you're applying to")
 parser.add_argument("-i", "--insert", nargs=4,
                     help="adds a new company. order: name, sector, symbol, snP")
-parser.add_argument("-a", "--apply", nargs=3,
-                    help="adds an application. order: position, coop, cyber")
+parser.add_argument("-a", "--apply", nargs=4,
+                    help="adds an application. order: position, coop, cyber, medium")
 parser.add_argument("-u", "--unapply", nargs=3,
                     help="removes an application. order: position, coop, cyber")
 parser.add_argument("-r", "--remove", nargs=4,
@@ -43,15 +43,18 @@ if args.insert == None:
 
 # Function to add a company to the list
 def addCompany(name, sector, symbol, snP):
+    if parseSector(sector) == None:
+        return
     if (data.has_key(symbol)):
         print('Company already exists in list')
         return
     try:
-        newCompany = Company(name, sector, symbol, snP)
+        newCompany = Company(name, parseSector(sector), symbol, snP)
         data[symbol] = newCompany
         print('Successfully added: ' + newCompany.Symbol)
     except:
         print('Unable to add company to list')
+        return
 
 # Function to remove a company from the list
 def removeCompany(symbol):
@@ -65,8 +68,11 @@ def removeCompany(symbol):
         print('Unable to remove company from list')
 
 # Function to add an application to the company
-def addApp(symbol, position, coop, cyber, date):
-    newApp = Application(symbol, position, coop, cyber, date)
+def addApp(symbol, position, coop, cyber, date, medium):
+    if medium == None:
+        print('Medium cannot be null')
+        return
+    newApp = Application(symbol, position, coop, cyber, date, medium)
     if (newApp in targetCompany.Apps):
         print('Application already exists at this company')
         return
@@ -88,6 +94,20 @@ def removeApp(symbol, position, coop, cyber, date):
     except:
         print('Unable to remove application from company')
 
+# Function to parse the argument for application medium
+def parseMedium(given):
+    match given:
+        case 'L': return AppMedium.Linkedin
+        case 'LinkedIn': return AppMedium.Linkedin
+        case 'Linkedin': return AppMedium.Linkedin
+        case 'W': return AppMedium.Website
+        case 'Website': return AppMedium.Website
+        case 'N': return AppMedium.NUWorks
+        case 'NUWorks': return AppMedium.NUWorks
+        case default:
+            print('Unable to parse medium')
+            return None
+
 # Add given company if a new company is given
 if args.insert != None:
     name = args.insert[0]
@@ -99,24 +119,21 @@ if args.insert != None:
     else:
         addCompany(name, sector, symbol, snP)
 
+test = args.apply[1] == 'T'
+
 # Adds an application to given company
 if args.apply != None:
     position = args.apply[0]
-    coop = args.apply[1]
-    cyber = args.apply[2]
-    if (coop == 'T'):
+    coop = False
+    cyber = False
+    if (args.apply[1] == 'T' or args.apply[1] == 'True'):
         coop = True
-    else:
-        coop = False
-    if (cyber == 'T'):
+    if (args.apply[2] == 'T' or args.apply[2] == 'True'):
         cyber = True
-    else:
-        cyber = False
-    # if (coop != 'F' or cyber != 'F'):
-    #     print('Coop and cyber values must be boolean')
-    #     sys.exit()
     date = datetime.date.today()
-    addApp(targetCompany.Symbol, position, coop, cyber, date)
+    medium = parseMedium(args.apply[3])
+
+    addApp(targetCompany.Symbol, position, coop, cyber, date, medium)
 
 # Removes an application from given company
 if args.unapply != None:
