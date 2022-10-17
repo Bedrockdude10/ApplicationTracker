@@ -4,7 +4,7 @@ import datetime
 
 from CustomClasses import SectorType
 from CompanyListConverter import parseSector
-from CustomClasses import Application, AppMedium, Company
+from CustomClasses import Application, parseMedium, Company
 import pickle
 import sys
 
@@ -94,20 +94,6 @@ def removeApp(symbol, position, coop, cyber, date):
     except:
         print('Unable to remove application from company')
 
-# Function to parse the argument for application medium
-def parseMedium(given):
-    match given:
-        case 'L': return AppMedium.Linkedin
-        case 'LinkedIn': return AppMedium.Linkedin
-        case 'Linkedin': return AppMedium.Linkedin
-        case 'W': return AppMedium.Website
-        case 'Website': return AppMedium.Website
-        case 'N': return AppMedium.NUWorks
-        case 'NUWorks': return AppMedium.NUWorks
-        case default:
-            print('Unable to parse medium')
-            return None
-
 # Add given company if a new company is given
 if args.insert != None:
     name = args.insert[0]
@@ -118,8 +104,6 @@ if args.insert != None:
         print('Check given symbol')
     else:
         addCompany(name, sector, symbol, snP)
-
-test = args.apply[1] == 'T'
 
 # Adds an application to given company
 if args.apply != None:
@@ -162,14 +146,24 @@ day = str(now.day)
 hour = str(now.hour)
 min = str(now.minute)
 sec = str(now.second)
-mic = str(now.microsecond)
-vList = [year, month, day, hour, min, sec, mic]
+vList = [year, month, day, hour, min, sec]
 version = '.'.join(vList)
 
 # Write to versioned pickle file
 with open('ReferenceData/Versions/tracker' + version + '.pickle', 'wb') as outf:
-    pickle.dump(data, outf, protocol=pickle.HIGHEST_PROTOCOL)
+    pickle.dump(data, outf)
 
 # Close pickle file
-with open('ReferenceData/tracker.pickle', 'wb') as outf:
-    pickle.dump(data, outf, protocol=pickle.HIGHEST_PROTOCOL)
+with open('ReferenceData/tracker.pickle', 'wb') as file:
+    pickle.dump(data, file)
+
+# Check that the data was written correctly
+with open('ReferenceData/tracker.pickle', 'rb') as fi:
+    data2 = pickle.load(fi)
+
+test = data[args.company]
+test2 = data2[args.company]
+test3 = test.Apps == test2.Apps
+test4 = test == test2
+if test.Apps != test2.Apps:
+    print('Apps not saved correctly')
