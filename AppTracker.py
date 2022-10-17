@@ -1,68 +1,158 @@
 #!/usr/bin/env python3
 import argparse
-from enum import Enum
-import json
+import datetime
+
+from CustomClasses import appStatus
+from CustomClasses import Application
+from CustomClasses import Company
+import pickle
 import sys
-
-# Enum to represent the status of an application
-class appStatus(str, Enum):
-    NOAPP = 'NOAPP'
-    APP = 'APP'
-    REJ = 'REJ'
-    MORE = 'MORE'
-    INTV = 'INTV'
-
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument("-c", "--company", default="", action="store", type=str,
-                    required=True, help="the name/ticker of the company you're applying to", nargs=1)
-parser.add_argument("-s", "--status", action="store_true",
-                    help="get the status of your application to the given company")
-parser.add_argument("-i", "--insert", choices=[appStatus.NOAPP, appStatus.APP,
-                                                appStatus.REJ, appStatus.MORE,
-                                                appStatus.INTV], action="store",
-                    help="changes the status of your application to the given status")
+parser.add_argument("-c", "--company", default="", action="store", type=str, required=True,
+                    help="the ticker of the company you're applying to")
+parser.add_argument("-i", "--insert", nargs=4,
+                    help="adds a new company. order: name, sector, symbol, snP")
+parser.add_argument("-a", "--apply", nargs=3,
+                    help="adds an application. order: position, coop, cyber")
+parser.add_argument("-u", "--unapply", nargs=3,
+                    help="removes an application. order: position, coop, cyber")
+parser.add_argument("-r", "--remove", nargs=4,
+                    help="removes a company from the company list")
 args = parser.parse_args()
 
-with open('ReferenceData/tracker.json', 'r') as f:
-    data = json.load(f)
+# Open pickle file
+with open('ReferenceData/tracker.pickle', 'rb') as f:
+    data = pickle.load(f)
 
-givenCompany = args.company[0]
-
-targetCompany = ''
-
-# Searches for the given company
-for d in data:
-    if (d['Symbol'] == givenCompany or d['Name'] == givenCompany):
-        targetCompany = d
-
-# Prints error message if given company is not found
-if (targetCompany == ''):
-    msg = "Company not found in list of S&P 500 companies"
-    print(msg)
-    sys.exit(0)
-
-# Gets the status of my application to a company
-def getStatus():
-    return targetCompany['Status']
-
-# if requested, runs and prints output of getStatus()
-if (args.status == True):
-    print(getStatus())
-
-# changes the status of my application to a given status
-def changeStatus():
-    if (targetCompany['Status'] != args.insert):
-        targetCompany['Status'] = args.insert
-        print('Status successfully changed to: ' + getStatus())
+# Checks that we are not adding a new company to the list
+if args.insert == None:
+    # Searches for the given company and exits if not found
+    if args.company not in data:
+        print('Requested company key not found in company list')
+        sys.exit()
     else:
-        print("Application status is already: " + args.insert)
+        targetCompany = data[args.company]
+        apps = targetCompany.Apps
+        if apps == set():
+            print('No applications submitted to: ' + targetCompany.Symbol)
+        else:
+            for app in apps:
+                print(app.Position + ' ' + str(app.Date) + ' ' + app.Status)
 
-# Calls changeStatus if insert argument is given
-if (args.insert != None):
-    changeStatus()
+# Function to add a company to the list
+def addCompany(name, sector, symbol, snP):
+    if (data.has_key(symbol)):
+        print('Company already exists in list')
+        return
+    try:
+        newCompany = Company(name, sector, symbol, snP)
+        data[symbol] = newCompany
+        print('Successfully added: ' + newCompany.Symbol)
+    except:
+        print('Unable to add company to list')
 
-# Writes to tracker JSON file
-with open('ReferenceData/tracker.json', 'w') as json_file:
-    json.dump(data, json_file)
+# Function to remove a company from the list
+def removeCompany(symbol):
+    if (not (data.has_key(symbol))):
+        print('Company does not exist in list')
+        return
+    try:
+        removed = data.pop(symbol)
+        print('Successfully removed: ' + removed.Symbol)
+    except:
+        print('Unable to remove company from list')
+
+# Function to add an application to the company
+def addApp(symbol, position, coop, cyber, date):
+    newApp = Application(symbol, position, coop, cyber, date)
+    if (newApp in targetCompany.Apps):
+        print('Application already exists at this company')
+        return
+    try:
+        targetCompany.Apps.add(newApp)
+        print('Successfully added: ' + newApp.CompanySymbol + ' ' + newApp.Position)
+    except:
+        print('Unable to add application to company')
+
+# Function to remove an application from a company
+def removeApp(symbol, position, coop, cyber, date):
+    toBeRemoved = Application(symbol, position, coop, cyber, date)
+    if toBeRemoved not in targetCompany.Apps:
+        print('Application does not exist at this company')
+        return
+    try:
+        targetCompany.Apps.remove(toBeRemoved)
+        print('Successfully removed: ' + toBeRemoved.CompanySymbol + toBeRemoved.Position)
+    except:
+        print('Unable to remove application from company')
+
+# Add given company if a new company is given
+if args.insert != None:
+    name = args.insert[0]
+    sector = args.insert[1]
+    symbol = args.insert[2]
+    snP = args.insert[3]
+    if len(symbol) > 5:
+        print('Check given symbol')
+    else:
+        addCompany(name, sector, symbol, snP)
+
+# Adds an application to given company
+if args.apply != None:
+    position = args.apply[0]
+    coop = args.apply[1]
+    cyber = args.apply[2]
+    if (coop == 'T'):
+        coop = True
+    else:
+        coop = False
+    if (cyber == 'T'):
+        cyber = True
+    else:
+        cyber = False
+    # if (coop != 'F' or cyber != 'F'):
+    #     print('Coop and cyber values must be boolean')
+    #     sys.exit()
+    date = datetime.date.today()
+    addApp(targetCompany.Symbol, position, coop, cyber, date)
+
+# Removes an application from given company
+if args.unapply != None:
+    position = args.apply[0]
+    coop = args.apply[1]
+    cyber = args.apply[2]
+    if (coop == 'T'):
+        coop = True
+    else:
+        coop = False
+    if (cyber == 'T'):
+        cyber = True
+    else:
+        cyber = False
+    position = args.apply[0]
+    coop = args.apply[1]
+    cyber = args.apply[2]
+    date = datetime.date.today()
+    removeApp(targetCompany.Symbol, position, coop, cyber, date)
+
+# Dates/times for version control
+now = datetime.datetime.now()
+year = str(now.year)
+month = str(now.month)
+day = str(now.day)
+hour = str(now.hour)
+min = str(now.minute)
+sec = str(now.second)
+mic = str(now.microsecond)
+vList = [year, month, day, hour, min, sec, mic]
+version = '.'.join(vList)
+
+# Write to versioned pickle file
+with open('ReferenceData/Versions/tracker' + version + '.pickle', 'wb') as outf:
+    pickle.dump(data, outf, protocol=pickle.HIGHEST_PROTOCOL)
+
+# Close pickle file
+with open('ReferenceData/tracker.pickle', 'wb') as outf:
+    pickle.dump(data, outf, protocol=pickle.HIGHEST_PROTOCOL)
