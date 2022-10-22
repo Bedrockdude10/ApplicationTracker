@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 import argparse
 import datetime
-
-from CustomClasses import SectorType
 from CompanyListConverter import parseSector
 from CustomClasses import Application, parseMedium, Company
 import pickle
@@ -16,14 +14,14 @@ parser.add_argument("-i", "--insert", nargs=4,
                     help="adds a new company. order: name, sector, symbol, snP")
 parser.add_argument("-a", "--apply", nargs=4,
                     help="adds an application. order: position, coop, cyber, medium")
-parser.add_argument("-u", "--unapply", nargs=3,
-                    help="removes an application. order: position, coop, cyber")
+parser.add_argument("-u", "--unapply", nargs=4,
+                    help="removes an application. order: position, coop, cyber, medium")
 parser.add_argument("-r", "--remove", nargs=4,
                     help="removes a company from the company list")
 args = parser.parse_args()
 
 # Open pickle file
-with open('ReferenceData/tracker.pickle', 'rb') as f:
+with open('ReferenceData/tracker2.pickle', 'rb+') as f:
     data = pickle.load(f)
 
 # Checks that we are not adding a new company to the list
@@ -39,7 +37,8 @@ if args.insert == None:
             print('No applications submitted to: ' + targetCompany.Symbol)
         else:
             for app in apps:
-                print(app.Position + ' ' + str(app.Date) + ' ' + app.Status)
+                print(app.Position + ':' + str(app.Coop) + '|' + str(app.Cyber)
+                      + '|' + app.Status + '|' + app.Medium)
 
 # Function to add a company to the list
 def addCompany(name, sector, symbol, snP):
@@ -83,9 +82,13 @@ def addApp(symbol, position, coop, cyber, date, medium):
         print('Unable to add application to company')
 
 # Function to remove an application from a company
-def removeApp(symbol, position, coop, cyber, date):
-    toBeRemoved = Application(symbol, position, coop, cyber, date)
-    if toBeRemoved not in targetCompany.Apps:
+def removeApp(position, coop, cyber, medium):
+    toBeRemoved = None
+    # I'm okay with iterating through the set because a company should never have more than a handful of applications
+    for app in targetCompany.Apps:
+        if app.Position == position and app.Coop == coop and app.Cyber == cyber and app.Medium == medium:
+            toBeRemoved = app
+    if toBeRemoved is None:
         print('Application does not exist at this company')
         return
     try:
@@ -121,9 +124,10 @@ if args.apply != None:
 
 # Removes an application from given company
 if args.unapply != None:
-    position = args.apply[0]
-    coop = args.apply[1]
-    cyber = args.apply[2]
+    position = args.unapply[0]
+    coop = args.unapply[1]
+    cyber = args.unapply[2]
+    medium = parseMedium(args.unapply[3])
     if (coop == 'T'):
         coop = True
     else:
@@ -132,11 +136,7 @@ if args.unapply != None:
         cyber = True
     else:
         cyber = False
-    position = args.apply[0]
-    coop = args.apply[1]
-    cyber = args.apply[2]
-    date = datetime.date.today()
-    removeApp(targetCompany.Symbol, position, coop, cyber, date)
+    removeApp(position, coop, cyber, medium)
 
 # Dates/times for version control
 now = datetime.datetime.now()
@@ -154,16 +154,5 @@ with open('ReferenceData/Versions/tracker' + version + '.pickle', 'wb') as outf:
     pickle.dump(data, outf)
 
 # Close pickle file
-with open('ReferenceData/tracker.pickle', 'wb') as file:
+with open('ReferenceData/tracker2.pickle', 'rb+') as file:
     pickle.dump(data, file)
-
-# Check that the data was written correctly
-with open('ReferenceData/tracker.pickle', 'rb') as fi:
-    data2 = pickle.load(fi)
-
-test = data[args.company]
-test2 = data2[args.company]
-test3 = test.Apps == test2.Apps
-test4 = test == test2
-if test.Apps != test2.Apps:
-    print('Apps not saved correctly')
